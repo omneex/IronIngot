@@ -16,24 +16,8 @@ pub async fn command(
     let vc = voice_state.channel_id.unwrap();
     let vc_name = vc.name(&ctx.cache).await.unwrap();
 
-
-
-    info!("Creating response...");
-    let _res = interaction
-        .create_interaction_response(&ctx.http, |response| {
-            response
-                .kind(InteractionResponseType::ChannelMessageWithSource)
-                .interaction_response_data(|message| {
-                    message.flags(MessageFlags::EPHEMERAL);
-                    message.content(format!("Joining {}...", vc_name))
-                })
-        })
-        .await;
-    info!("Response created.");
-
     let manager = songbird::get(ctx).await
         .expect("Songbird Voice client placed in at initialisation.").clone();
-
 
     if let Some(handler_lock) = manager.get(guild.id) {
         let mut handler = handler_lock.lock().await;
@@ -72,7 +56,6 @@ pub async fn command(
                 response
                     .kind(InteractionResponseType::ChannelMessageWithSource)
                     .interaction_response_data(|message| {
-                        message.content(format!("Joining {}...", vc_name));
                         message.embed(|embed| {
 
                             embed.title("Now Playing");

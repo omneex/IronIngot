@@ -3,6 +3,10 @@ services:
     restart: always
     build: .
     links:
-      - redis
+      - mongodb
     env_file:
       - .env
+      
+  mongodb:
+    image: mongo
+    

@@ -130,8 +130,7 @@ async fn main() {
     let handler = Handler {
         mongodb_client,
     };
-    let intents = GatewayIntents::GUILD_INTEGRATIONS
-    | GatewayIntents::GUILDS;
+    let intents = GatewayIntents::all();
     let mut client = Client::builder(token, intents)
         .event_handler(handler)
         .framework(framework)
