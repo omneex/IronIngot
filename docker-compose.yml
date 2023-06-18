@@ -1,0 +1,8 @@
+services:
+  bot:
+    restart: always
+    build: .
+    links:
+      - redis
+    env_file:
+      - .env
