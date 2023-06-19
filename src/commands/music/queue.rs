@@ -43,8 +43,7 @@ pub async fn command(
                 .interaction_response_data(|message| {
                     message.embed(|embed| {
                         embed.title("Current Queue");
-                        let mut count = 0;
-                        for track in &call.queue().current_queue() {
+                        for (count, track) in call.queue().current_queue().iter().enumerate() {
                             if count > 25 {
                                 break;
                             }
@@ -55,7 +54,6 @@ pub async fn command(
                             } else {
                                 embed.field((count+1).to_string(), format!("[{}]({})", title, source_url), false);
                             }
-                            count+=1;
                         };
                         embed
                     });
