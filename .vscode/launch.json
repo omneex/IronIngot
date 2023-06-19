@@ -8,20 +8,21 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'ironic_bot'",
+            "name": "Debug executable 'ironingot'",
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=ironic_bot",
-                    "--package=ironic_bot"
+                    "--bin=ironingot",
+                    "--package=ironingot"
                 ],
                 "filter": {
-                    "name": "ironic_bot",
+                    "name": "ironingot",
                     "kind": "bin"
                 }
             },
             "args": [],
             "cwd": "${workspaceFolder}",
+            "envFile": "./.env"
         },
         {
             "type": "lldb",

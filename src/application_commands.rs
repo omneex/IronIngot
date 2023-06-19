@@ -3,6 +3,8 @@ use crate::commands::misc::ping::command as pingcommand;
 use crate::commands::music::join;
 use crate::commands::music::leave;
 use crate::commands::music::nowplaying;
+use crate::commands::music::play;
+use crate::commands::music::queue;
 use mongodb::Client;
 use serenity::model::application::interaction::application_command::ApplicationCommandInteraction;
 use serenity::model::application::interaction::message_component::MessageComponentInteraction;
@@ -24,6 +26,8 @@ pub async fn register(ctx: &Context) {
     join::register(ctx).await;
     leave::register(ctx).await;
     nowplaying::register(ctx).await;
+    play::register(ctx).await;
+    queue::register(ctx).await;
     info!("Done.");
 
     // Print out the currently registered commands.
@@ -89,6 +93,12 @@ async fn handle_commands(
         }
         "nowplaying" => {
             nowplaying::command(ctx, interaction, mongo_client).await;
+        }
+        "play" => {
+            play::command(ctx, interaction, mongo_client).await;
+        }
+        "queue" => {
+            queue::command(ctx, interaction, mongo_client).await;
         }
         _ => {
             warn!("Command not found.");
