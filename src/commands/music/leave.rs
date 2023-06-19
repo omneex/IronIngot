@@ -17,7 +17,7 @@ pub async fn command(
     let vc = voice_state.channel_id.unwrap();
     let vc_name = vc.name(&ctx.cache).await.unwrap();
 
-    let manager = songbird::get(&ctx).await
+    let manager = songbird::get(ctx).await
         .expect("Songbird Voice client placed in at initialisation.").clone();
 
     let has_handler = manager.get(guild.id).is_some();
@@ -47,7 +47,7 @@ pub async fn command(
                      .kind(InteractionResponseType::ChannelMessageWithSource)
                      .interaction_response_data(|message| {
                          message.flags(MessageFlags::EPHEMERAL);
-                         message.content(format!("Bot is not in a voice chat."))
+                         message.content("Bot is not in a voice chat.".to_string())
                      })
              })
              .await;

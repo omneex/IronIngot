@@ -1,5 +1,5 @@
 
-use std::process::Command;
+
 
 use serenity::model::application::command::Command as interaction_command;
 
@@ -100,7 +100,7 @@ pub async fn command(
                 .kind(InteractionResponseType::ChannelMessageWithSource)
                 .interaction_response_data(|message| {
                     message.embed(|embed| {
-                        embed.title(format!("Queued Track: {}", position.to_string()));
+                        embed.title(format!("Queued Track: {}", position));
                         embed.description(format!("[{}]({})", source_metadata.title.unwrap_or("NONE".to_string()), source_metadata.source_url.unwrap_or("NONE".to_string())));
                         embed.image(source_metadata.thumbnail.unwrap())
                     })

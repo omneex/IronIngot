@@ -112,15 +112,13 @@ async fn handle_components(
     _mongo_client: &Client,
 ) {
     let ids_split: Vec<&str> = m_component.data.custom_id.split(':').collect();
-    let comp_type: &str = match ids_split.first() {
-        Some(str_type) => *str_type,
+    let _comp_type: &str = match ids_split.first() {
+        Some(str_type) => str_type,
         None => "none",
     };
     // TODO possibly avoid another split here by using this split again, but for now I dont want to edit the signiture
-    match comp_type {
-        _ => {
-            warn!("Interaction not found.");
-        }
+    {
+        warn!("Interaction not found.");
     }
 }
 
@@ -176,7 +174,7 @@ pub async fn add_admins_to_perms(
         Ok(role_map) => {
             for role_tup in role_map {
                 let (role_id, role) = role_tup;
-                if role.permissions.administrator() && role.tags.bot_id == None {
+                if role.permissions.administrator() && role.tags.bot_id.is_none() {
                     admin_role_ids.push(role_id);
                 }
             }
