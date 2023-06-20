@@ -67,6 +67,7 @@ pub async fn interaction_error_edit(
     }
 }
 
+#[allow(dead_code)]
 pub async fn interaction_error_comp(
     err_message: &str,
     command: &MessageComponentInteraction,

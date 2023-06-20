@@ -5,12 +5,13 @@ use serenity::model::prelude::interaction::{application_command::*, InteractionR
 use serenity::prelude::Context;
 
 use songbird::input::ytdl_search;
-use songbird::ytdl;
+use songbird::{create_player, ytdl};
 use tracing::{error, info};
 use url::Url;
 
 use crate::commands::common::interaction_error::interaction_error_edit;
 use crate::commands::common::slash_commands::extract_vec;
+use crate::mongo_conn::get_guild_doc;
 enum QueryType {
     URL,
     SEARCH,
@@ -93,7 +94,18 @@ pub async fn command(
 
     // Queue the track
     let mut call = call_lock.lock().await;
-    call.enqueue_source(source);
+    let (mut audio, audio_handle) = create_player(source);
+    let guild_id_str = interaction.guild_id.unwrap().0.to_string();
+
+    // Try to get the guild from the database, returns an option if the guild was found.
+    let guild_doc = match get_guild_doc(mongo_client, guild_id_str, interaction, ctx).await {
+        Some(value) => value,
+        None => return,
+    };
+
+    audio.set_volume(guild_doc.volume);
+
+    call.enqueue(audio);
     let position: usize = call.queue().len();
 
     // Send the response
@@ -113,6 +125,7 @@ pub async fn command(
         .await;
     info!("Response created.");
 }
+
 #[allow(dead_code)]
 pub async fn register(ctx: &Context) {
     if let Err(err) =

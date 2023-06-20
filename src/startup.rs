@@ -20,6 +20,7 @@ pub async fn insert_guilds(ctx: &Context, client: &mongodb::Client) -> Result<()
                     mod_channel_ID: "0".to_string(),
                     mod_role_ID: "0".to_string(),
                     prefix_string: "~".to_string(),
+                    volume: 0.7
                 },
                 None,
             )

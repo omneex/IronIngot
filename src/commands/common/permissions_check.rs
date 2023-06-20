@@ -77,6 +77,7 @@ pub async fn check_if_mod(
     Ok(allowed)
 }
 
+#[allow(dead_code)]
 pub async fn check_if_mod_comp(
     ctx: &Context,
     command: &MessageComponentInteraction,

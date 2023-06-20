@@ -7,6 +7,7 @@ pub struct Guild {
     pub mod_channel_ID: String,
     pub mod_role_ID: String,
     pub prefix_string: String,
+    pub volume: f32
 }
 
 #[derive(Debug, Serialize, Deserialize)]
