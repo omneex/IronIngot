@@ -24,7 +24,6 @@ pub async fn command(
 ) {
     interaction
         .create_interaction_response(&ctx.http, |response| {
-            response.interaction_response_data(|message| message.ephemeral(true));
             response.kind(InteractionResponseType::DeferredChannelMessageWithSource)
         })
         .await;

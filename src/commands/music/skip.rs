@@ -17,9 +17,6 @@ pub async fn command(
         .unwrap()
         .to_guild_cached(&ctx.cache)
         .unwrap();
-    let voice_state = guild.voice_states.get(&interaction.user.id).unwrap();
-    let vc = voice_state.channel_id.unwrap();
-    let vc_name = vc.name(&ctx.cache).await.unwrap();
 
     let manager = songbird::get(ctx)
         .await
@@ -57,7 +54,11 @@ pub async fn command(
             Some(track_handle) => track_handle,
         };
 
-        handler.queue().skip();
+        if let Err(track_error) = handler.queue().skip() {
+            error!("{}", track_error.to_string());
+            interaction_error_edit("Failed to skip song!", interaction, ctx);
+            return ;
+        };
 
         info!("Creating response...");
         let _res = interaction

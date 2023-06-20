@@ -80,13 +80,7 @@ pub async fn command(
         })
         .await;
     info!("Response created.");
-
-    let manager = songbird::get(ctx)
-        .await
-        .expect("Songbird Voice client placed in at initialisation.")
-        .clone();
-
-    manager.join(guild.id, vc).await;
+    
 }
 #[allow(dead_code)]
 pub async fn register(ctx: &Context) {
