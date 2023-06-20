@@ -8,20 +8,15 @@ use mongodb::Collection;
 use serenity::model::application::interaction::Interaction;
 use songbird::SerenityInit;
 
-use std::{
-    env,
-    sync::{
-        Arc,
-    },
-};
+use std::{env, sync::Arc};
 
-use mongo_conn::{get_mongo_client, get_collection, get_db};
+use crate::dbmodels::guild::Guild as GuildStruct;
+use mongo_conn::{get_collection, get_db, get_mongo_client};
 use serenity::{
     async_trait, framework::StandardFramework, model::prelude::GuildId, model::prelude::*,
     prelude::*,
 };
 use tracing::{error, info, warn};
-use crate::dbmodels::guild::Guild as GuildStruct;
 
 use crate::startup::insert_guilds;
 
@@ -96,12 +91,7 @@ impl EventHandler for Handler {
 
     // Interaction handler
     async fn interaction_create(&self, _ctx: Context, _interaction: Interaction) {
-        application_commands::handle_interactions(
-            &_ctx,
-            _interaction,
-            &self.mongodb_client,
-        )
-        .await
+        application_commands::handle_interactions(&_ctx, _interaction, &self.mongodb_client).await
     }
 
     async fn guild_create(&self, _ctx: Context, guild: Guild, _new: bool) {
@@ -124,7 +114,7 @@ impl EventHandler for Handler {
                     mod_channel_ID: "0".to_string(),
                     mod_role_ID: "0".to_string(),
                     prefix_string: "~".to_string(),
-                    volume: 0.7
+                    volume: 0.7,
                 },
                 None,
             )
@@ -156,9 +146,7 @@ async fn main() {
         }
     };
 
-    let handler = Handler {
-        mongodb_client,
-    };
+    let handler = Handler { mongodb_client };
     let intents = GatewayIntents::all();
     let mut client = Client::builder(token, intents)
         .event_handler(handler)
