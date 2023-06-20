@@ -1,4 +1,4 @@
-use crate::dbmodels::guild::{Guild};
+use crate::dbmodels::guild::Guild;
 use crate::mongo_conn::{get_collection, get_db};
 use mongodb::bson::doc;
 use mongodb::options::IndexOptions;

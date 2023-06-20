@@ -1,6 +1,3 @@
-
-
-
 use serenity::model::application::command::Command as interaction_command;
 
 use serenity::model::prelude::command::CommandOptionType;
@@ -25,12 +22,12 @@ pub async fn command(
     interaction: &ApplicationCommandInteraction,
     mongo_client: &mongodb::Client,
 ) {
-    interaction.create_interaction_response(&ctx.http, |response| {
-        response.interaction_response_data(|message| {
-            message.ephemeral(true)
-        });
-        response.kind(InteractionResponseType::DeferredChannelMessageWithSource)
-    }).await;
+    interaction
+        .create_interaction_response(&ctx.http, |response| {
+            response.interaction_response_data(|message| message.ephemeral(true));
+            response.kind(InteractionResponseType::DeferredChannelMessageWithSource)
+        })
+        .await;
 
     let mut query_string_opt: Option<String> = None;
     for tup in extract_vec(&interaction.data.options).await {
@@ -49,7 +46,7 @@ pub async fn command(
         None => {
             interaction_error_edit("'song' param was missing.", interaction, ctx).await;
             return;
-        },
+        }
     };
 
     let query_type: QueryType = match Url::parse(&query_string) {
@@ -58,9 +55,15 @@ pub async fn command(
     };
 
     // Get the call
-    let manager = songbird::get(ctx).await
-        .expect("Songbird Voice client placed in at initialisation.").clone();
-    let guild = interaction.guild_id.unwrap().to_guild_cached(&ctx.cache).unwrap();
+    let manager = songbird::get(ctx)
+        .await
+        .expect("Songbird Voice client placed in at initialisation.")
+        .clone();
+    let guild = interaction
+        .guild_id
+        .unwrap()
+        .to_guild_cached(&ctx.cache)
+        .unwrap();
     let call_lock = match manager.get(guild.id) {
         Some(ongoing_call) => ongoing_call,
         None => {
@@ -68,31 +71,27 @@ pub async fn command(
             let vc = voice_state.channel_id.unwrap();
             let vc_name = vc.name(&ctx.cache).await.unwrap();
             manager.join(guild.id, vc).await.0
-        },
+        }
     };
 
     // Get the track
     let input_res = match query_type {
-        QueryType::URL => {
-            ytdl(query_string).await
-        },
-        QueryType::SEARCH => {
-            ytdl_search(query_string).await
-        },
+        QueryType::URL => ytdl(query_string).await,
+        QueryType::SEARCH => ytdl_search(query_string).await,
     };
 
     let source = match input_res {
-        Ok(input ) => input,
+        Ok(input) => input,
         Err(err) => {
             error!("Error: {}", err);
             interaction_error_edit("Failed to get the track.", interaction, ctx).await;
             return;
-        },
+        }
     };
 
     let source_metadata = source.metadata.clone();
     info!("{:?}", source_metadata);
-    
+
     // Queue the track
     let mut call = call_lock.lock().await;
     call.enqueue_source(source);
@@ -104,24 +103,31 @@ pub async fn command(
         .edit_original_interaction_response(&ctx.http, |message| {
             message.embed(|embed| {
                 embed.title(format!("Queued Track: {}", position));
-                embed.description(format!("[{}]({})", source_metadata.title.unwrap_or("NONE".to_string()), source_metadata.source_url.unwrap_or("NONE".to_string())));
+                embed.description(format!(
+                    "[{}]({})",
+                    source_metadata.title.unwrap_or("NONE".to_string()),
+                    source_metadata.source_url.unwrap_or("NONE".to_string())
+                ));
                 embed.image(source_metadata.thumbnail.unwrap())
             })
-        }).await;
+        })
+        .await;
     info!("Response created.");
-
 }
 #[allow(dead_code)]
 pub async fn register(ctx: &Context) {
-    if let Err(err) = interaction_command::create_global_application_command(&*ctx.http, |command| {
-        command.name("play").description("Adds a song to the queue.")
-        .create_option(|opt| {
-            opt.name("song")
-                .description("A URL or search query.")
-                .kind(CommandOptionType::String)
-                .required(true)
+    if let Err(err) =
+        interaction_command::create_global_application_command(&*ctx.http, |command| {
+            command
+                .name("play")
+                .description("Adds a song to the queue.")
+                .create_option(|opt| {
+                    opt.name("song")
+                        .description("A URL or search query.")
+                        .kind(CommandOptionType::String)
+                        .required(true)
+                })
         })
-    })
         .await
     {
         error!("Could not register join command! {}", err.to_string());

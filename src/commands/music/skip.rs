@@ -12,13 +12,19 @@ pub async fn command(
     interaction: &ApplicationCommandInteraction,
     mongo_client: &mongodb::Client,
 ) {
-    let guild = interaction.guild_id.unwrap().to_guild_cached(&ctx.cache).unwrap();
+    let guild = interaction
+        .guild_id
+        .unwrap()
+        .to_guild_cached(&ctx.cache)
+        .unwrap();
     let voice_state = guild.voice_states.get(&interaction.user.id).unwrap();
     let vc = voice_state.channel_id.unwrap();
     let vc_name = vc.name(&ctx.cache).await.unwrap();
 
-    let manager = songbird::get(ctx).await
-        .expect("Songbird Voice client placed in at initialisation.").clone();
+    let manager = songbird::get(ctx)
+        .await
+        .expect("Songbird Voice client placed in at initialisation.")
+        .clone();
 
     if let Some(handler_lock) = manager.get(guild.id) {
         let mut handler = handler_lock.lock().await;
@@ -48,7 +54,7 @@ pub async fn command(
                 info!("Response created.");
                 return;
             }
-            Some(track_handle) => track_handle
+            Some(track_handle) => track_handle,
         };
 
         handler.queue().skip();
@@ -60,11 +66,10 @@ pub async fn command(
                     .kind(InteractionResponseType::ChannelMessageWithSource)
                     .interaction_response_data(|message| {
                         message.embed(|embed| {
-
                             embed.title("Skipped!");
 
                             if let Some(track_title) = &track_handle.metadata().title {
-                                embed.url(track_title);
+                                embed.description(track_title);
                             }
 
                             if let Some(source_url) = &track_handle.metadata().source_url {
@@ -72,7 +77,7 @@ pub async fn command(
                             }
 
                             if let Some(thumbnail_url) = &track_handle.metadata().thumbnail {
-                                embed.thumbnail(thumbnail_url);
+                                embed.image(thumbnail_url);
                             }
 
                             embed
@@ -85,15 +90,16 @@ pub async fn command(
     } else {
         interaction_error_edit("Something went wrong!", interaction, ctx).await;
     }
-
 }
 
 #[allow(dead_code)]
 pub async fn register(ctx: &Context) {
     if let Err(err) = Command::create_global_application_command(&*ctx.http, |command| {
-        command.name("skip").description("Skips the current song playing")
+        command
+            .name("skip")
+            .description("Skips the current song playing")
     })
-        .await
+    .await
     {
         error!("Could not register nowplaying command! {}", err.to_string());
         panic!()
