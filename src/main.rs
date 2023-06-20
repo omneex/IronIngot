@@ -4,6 +4,7 @@ mod dbmodels;
 mod mongo_conn;
 mod startup;
 
+use mongodb::Collection;
 use serenity::model::application::interaction::Interaction;
 use songbird::SerenityInit;
 
@@ -14,12 +15,13 @@ use std::{
     },
 };
 
-use mongo_conn::get_mongo_client;
+use mongo_conn::{get_mongo_client, get_collection, get_db};
 use serenity::{
     async_trait, framework::StandardFramework, model::prelude::GuildId, model::prelude::*,
     prelude::*,
 };
 use tracing::{error, info, warn};
+use crate::dbmodels::guild::Guild as GuildStruct;
 
 use crate::startup::insert_guilds;
 
@@ -100,6 +102,33 @@ impl EventHandler for Handler {
             &self.mongodb_client,
         )
         .await
+    }
+
+    async fn guild_create(&self, _ctx: Context, guild: Guild, _new: bool) {
+        let mongo_conn_str = env::var("MONGO_CONN_STR").expect("Need a MongoDB connection string.");
+        let client = match get_mongo_client(mongo_conn_str.as_str()).await {
+            Ok(client) => client,
+            Err(_) => {
+                panic!("Could not get mongoDB client.")
+            }
+        };
+        let db = get_db(&client, "botdb").await;
+        let col: Collection<GuildStruct> = get_collection(&db, "guilds", None).await;
+
+        let guild_id_str = guild.id.0.to_string().clone();
+
+        let _ = col
+            .insert_one(
+                GuildStruct {
+                    guild_ID: guild_id_str,
+                    mod_channel_ID: "0".to_string(),
+                    mod_role_ID: "0".to_string(),
+                    prefix_string: "~".to_string(),
+                    volume: 0.7
+                },
+                None,
+            )
+            .await;
     }
 }
 
