@@ -41,6 +41,32 @@ pub async fn interaction_error(
     }
 }
 
+pub async fn interaction_error_edit(
+    err_message: &str,
+    command: &ApplicationCommandInteraction,
+    ctx: &Context,
+) {
+    warn!("Interaction Error: {}", err_message);
+
+    let res = command
+        .edit_original_interaction_response(&ctx.http, |message| {
+            message.embed(|embed| {
+                embed
+                    .title("Uh Oh!")
+                    .description("Something went wrong during that.")
+                    .field("Reason", err_message, false)
+                    .color(Colour::from_rgb(255, 0, 0))
+            })
+        }).await;
+
+    if let Err(err) = res {
+        error!(
+            "An error occurred while sending an error interaction reply. {}",
+            err
+        );
+    }
+}
+
 pub async fn interaction_error_comp(
     err_message: &str,
     command: &MessageComponentInteraction,

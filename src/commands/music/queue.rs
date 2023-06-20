@@ -13,6 +13,14 @@ pub async fn command(
     interaction: &ApplicationCommandInteraction,
     mongo_client: &mongodb::Client,
 ) {
+
+    interaction.create_interaction_response(&ctx.http, |response| {
+        response.interaction_response_data(|message| {
+            message.ephemeral(true)
+        });
+        response.kind(InteractionResponseType::DeferredChannelMessageWithSource)
+    }).await;
+
     let guild = interaction.guild_id.unwrap().to_guild_cached(&ctx.cache).unwrap();
     let voice_state = guild.voice_states.get(&interaction.user.id).unwrap();
     let vc = voice_state.channel_id.unwrap();
@@ -37,31 +45,26 @@ pub async fn command(
 
     info!("Creating response...");
     let _res = interaction
-        .create_interaction_response(&ctx.http, |response| {
-            response
-                .kind(InteractionResponseType::ChannelMessageWithSource)
-                .interaction_response_data(|message| {
-                    message.embed(|embed| {
-                        embed.title("Current Queue");
-                        for (count, track) in call.queue().current_queue().iter().enumerate() {
-                            if count > 25 {
-                                break;
-                            }
-                            let title = track.metadata().title.clone().unwrap();
-                            let source_url = track.metadata().source_url.clone().unwrap();
-                            if count == 0 {
-                                embed.field("Currently Playing", format!("[{}]({})", title, source_url), false);
-                            } else {
-                                embed.field((count+1).to_string(), format!("[{}]({})", title, source_url), false);
-                            }
-                        };
-                        embed
-                    });
-                    
-                    message
-                })
-        })
-        .await;
+        .edit_original_interaction_response(&ctx.http, |message| {
+            message.embed(|embed| {
+                embed.title("Current Queue");
+                for (count, track) in call.queue().current_queue().iter().enumerate() {
+                    if count > 25 {
+                        break;
+                    }
+                    let title = track.metadata().title.clone().unwrap();
+                    let source_url = track.metadata().source_url.clone().unwrap();
+                    if count == 0 {
+                        embed.field("Currently Playing", format!("[{}]({})", title, source_url), false);
+                    } else {
+                        embed.field((count+1).to_string(), format!("[{}]({})", title, source_url), false);
+                    }
+                };
+                embed
+            });
+            
+            message
+        }).await;
     info!("Response created.");
 
     let manager = songbird::get(ctx).await

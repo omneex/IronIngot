@@ -12,7 +12,7 @@ use songbird::ytdl;
 use tracing::{error, info};
 use url::Url;
 
-use crate::commands::common::interaction_error::interaction_error;
+use crate::commands::common::interaction_error::interaction_error_edit;
 use crate::commands::common::slash_commands::extract_vec;
 enum QueryType {
     URL,
@@ -25,6 +25,12 @@ pub async fn command(
     interaction: &ApplicationCommandInteraction,
     mongo_client: &mongodb::Client,
 ) {
+    interaction.create_interaction_response(&ctx.http, |response| {
+        response.interaction_response_data(|message| {
+            message.ephemeral(true)
+        });
+        response.kind(InteractionResponseType::DeferredChannelMessageWithSource)
+    }).await;
 
     let mut query_string_opt: Option<String> = None;
     for tup in extract_vec(&interaction.data.options).await {
@@ -32,7 +38,7 @@ pub async fn command(
             if let Some(x) = super::super::common::slash_commands::get_string(tup.1) {
                 query_string_opt = Some(x);
             } else {
-                interaction_error("'song' param was invalid.", interaction, ctx).await;
+                interaction_error_edit("'song' param was invalid.", interaction, ctx).await;
                 return;
             }
         }
@@ -41,7 +47,7 @@ pub async fn command(
     let query_string = match query_string_opt {
         Some(x) => x,
         None => {
-            interaction_error("'song' param was missing.", interaction, ctx).await;
+            interaction_error_edit("'song' param was missing.", interaction, ctx).await;
             return;
         },
     };
@@ -79,7 +85,7 @@ pub async fn command(
         Ok(input ) => input,
         Err(err) => {
             error!("Error: {}", err);
-            interaction_error("Failed to get the track.", interaction, ctx);
+            interaction_error_edit("Failed to get the track.", interaction, ctx).await;
             return;
         },
     };
@@ -95,18 +101,13 @@ pub async fn command(
     // Send the response
     info!("Creating response...");
     let _res = interaction
-        .create_interaction_response(&ctx.http, |response| {
-            response
-                .kind(InteractionResponseType::ChannelMessageWithSource)
-                .interaction_response_data(|message| {
-                    message.embed(|embed| {
-                        embed.title(format!("Queued Track: {}", position));
-                        embed.description(format!("[{}]({})", source_metadata.title.unwrap_or("NONE".to_string()), source_metadata.source_url.unwrap_or("NONE".to_string())));
-                        embed.image(source_metadata.thumbnail.unwrap())
-                    })
-                })
-        })
-        .await;
+        .edit_original_interaction_response(&ctx.http, |message| {
+            message.embed(|embed| {
+                embed.title(format!("Queued Track: {}", position));
+                embed.description(format!("[{}]({})", source_metadata.title.unwrap_or("NONE".to_string()), source_metadata.source_url.unwrap_or("NONE".to_string())));
+                embed.image(source_metadata.thumbnail.unwrap())
+            })
+        }).await;
     info!("Response created.");
 
 }

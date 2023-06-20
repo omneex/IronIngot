@@ -4,3 +4,4 @@ pub mod leave;
 pub mod nowplaying;
 pub mod queue;
 pub mod stop;
+pub mod skip;

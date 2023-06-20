@@ -3,7 +3,7 @@ use serenity::model::prelude::{PartialChannel, Role};
 use serenity::model::{
     application::interaction::application_command::CommandDataOption, user::User,
 };
-
+#[allow(dead_code)]
 pub async fn extract_vec(options: &[CommandDataOption]) -> Vec<(&str, CommandDataOptionValue)> {
     let mut params: Vec<(&str, CommandDataOptionValue)> = vec![];
     options.iter().for_each(|opt| {
@@ -31,7 +31,7 @@ pub fn get_role(option_value: CommandDataOptionValue) -> Option<Role> {
     };
     value
 }
-
+#[allow(dead_code)]
 pub fn get_channel(option_value: CommandDataOptionValue) -> Option<PartialChannel> {
     let value: Option<PartialChannel> = match option_value {
         CommandDataOptionValue::Channel(chan) => Some(chan),
@@ -39,7 +39,7 @@ pub fn get_channel(option_value: CommandDataOptionValue) -> Option<PartialChanne
     };
     value
 }
-
+#[allow(dead_code)]
 pub fn get_user(option_value: CommandDataOptionValue) -> Option<User> {
     let value: Option<User> = match option_value {
         CommandDataOptionValue::User(user, _) => Some(user),
@@ -55,7 +55,7 @@ pub fn get_bool(option_value: CommandDataOptionValue) -> Option<bool> {
     };
     value
 }
-
+#[allow(dead_code)]
 pub fn get_string(option_value: CommandDataOptionValue) -> Option<String> {
     let value: Option<String> = match option_value {
         CommandDataOptionValue::String(string) => Some(string),
@@ -63,6 +63,7 @@ pub fn get_string(option_value: CommandDataOptionValue) -> Option<String> {
     };
     value
 }
+#[allow(dead_code)]
 pub fn get_int(option_value: CommandDataOptionValue) -> Option<i64> {
     let value: Option<i64> = match option_value {
         CommandDataOptionValue::Integer(i) => Some(i),

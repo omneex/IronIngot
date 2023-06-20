@@ -11,6 +11,13 @@ pub async fn command(
     interaction: &ApplicationCommandInteraction,
     mongo_client: &mongodb::Client,
 ) {
+    interaction.create_interaction_response(&ctx.http, |response| {
+        response.interaction_response_data(|message| {
+            message.ephemeral(true)
+        });
+        response.kind(InteractionResponseType::DeferredChannelMessageWithSource)
+    }).await;
+
     let guild = interaction.guild_id.unwrap().to_guild_cached(&ctx.cache).unwrap();
     let voice_state = guild.voice_states.get(&interaction.user.id).unwrap();
     let vc = voice_state.channel_id.unwrap();
@@ -26,24 +33,20 @@ pub async fn command(
             None => {
                 info!("Creating response...");
                 let _res = interaction
-                    .create_interaction_response(&ctx.http, |response| {
-                        response
-                            .kind(InteractionResponseType::ChannelMessageWithSource)
-                            .interaction_response_data(|message| {
-                                message.flags(MessageFlags::EPHEMERAL);
-                                message.embed(|embed| {
-                                    embed.title("Now Playing");
-                                    embed.description("There is nothing playing right now...");
-                                    embed.footer(|footer| {
-                                        footer.text("Queue position 0 is empty.");
-                                        footer
-                                    });
-                                    embed
-                                });
-                                message
-                            })
+                    .edit_original_interaction_response(&ctx.http, |message| {
+                        message.embed(|embed| {
+                            embed.title("Now Playing");
+                            embed.description("There is nothing playing right now...");
+                            embed.footer(|footer| {
+                                footer.text("Queue position 0 is empty.");
+                                footer
+                            });
+                            embed
+                        });
+                        message
                     })
                     .await;
+                
                 info!("Response created.");
                 return;
             }
@@ -52,33 +55,30 @@ pub async fn command(
 
         info!("Creating response...");
         let _res = interaction
-            .create_interaction_response(&ctx.http, |response| {
-                response
-                    .kind(InteractionResponseType::ChannelMessageWithSource)
-                    .interaction_response_data(|message| {
-                        message.embed(|embed| {
+            .edit_original_interaction_response(&ctx.http, |message| {
+                message.embed(|embed| {
 
-                            embed.title("Now Playing");
+                    embed.title("Now Playing");
 
-                            if let Some(track_title) = &track_handle.metadata().title {
-                                embed.url(track_title);
-                            }
+                    if let Some(track_title) = &track_handle.metadata().title {
+                        embed.url(track_title);
+                    }
 
-                            if let Some(source_url) = &track_handle.metadata().source_url {
-                                embed.url(source_url);
-                            }
+                    if let Some(source_url) = &track_handle.metadata().source_url {
+                        embed.url(source_url);
+                    }
 
-                            if let Some(thumbnail_url) = &track_handle.metadata().thumbnail {
-                                embed.thumbnail(thumbnail_url);
-                            }
+                    if let Some(thumbnail_url) = &track_handle.metadata().thumbnail {
+                        embed.thumbnail(thumbnail_url);
+                    }
 
-                            embed
-                        });
-                        message
-                    })
-            })
-            .await;
+                    embed
+                });
+                message
+            }).await;
         info!("Response created.");
+    } else {
+
     }
 
 }
