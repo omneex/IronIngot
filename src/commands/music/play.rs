@@ -1,10 +1,17 @@
+
+use std::error::Error;
+use std::fmt::Display;
+use std::process::{Command, Stdio};
+use std::str::from_utf8;
+use tokio::{process::Command as TokioCommand, task};
+
 use serenity::model::application::command::Command as interaction_command;
 
 use serenity::model::prelude::command::CommandOptionType;
 use serenity::model::prelude::interaction::{application_command::*, InteractionResponseType};
 use serenity::prelude::Context;
 
-use songbird::input::ytdl_search;
+use songbird::input::{ytdl_search, Input, Metadata};
 use songbird::{create_player, ytdl};
 use tracing::{error, info};
 use url::Url;
@@ -14,6 +21,7 @@ use crate::commands::common::slash_commands::extract_vec;
 use crate::mongo_conn::get_guild_doc;
 enum QueryType {
     URL,
+    PLAYLIST,
     SEARCH,
 }
 
@@ -50,7 +58,13 @@ pub async fn command(
     };
 
     let query_type: QueryType = match Url::parse(&query_string) {
-        Ok(_) => QueryType::URL,
+        Ok(url_obj) => {
+            if let Some(playlist_param) = url_obj.query_pairs().find(|pair| {pair.0=="list"}) {
+                QueryType::PLAYLIST
+            } else {
+                QueryType::URL
+            }
+        },
         Err(_) => QueryType::SEARCH,
     };
 
@@ -73,11 +87,22 @@ pub async fn command(
             manager.join(guild.id, vc).await.0
         }
     };
-
+    let mut playlist: Vec<Metadata> = vec![];
     // Get the track
     let input_res = match query_type {
         QueryType::URL => ytdl(query_string).await,
         QueryType::SEARCH => ytdl_search(query_string).await,
+        QueryType::PLAYLIST => {
+            playlist = match ytdl_playlist(&query_string).await {
+                Ok(playlist) => playlist,
+                Err(e) => {
+                    error!("{}", e);
+                    interaction_error_edit("Failed to get the playlist.", interaction, ctx);
+                    return ;
+                },
+            };
+            ytdl(query_string).await
+        }
     };
 
     let source = match input_res {
@@ -145,4 +170,58 @@ pub async fn register(ctx: &Context) {
         error!("Could not register join command! {}", err.to_string());
         panic!()
     }
+}
+
+struct PlaylistError {
+    cause: String
+}
+
+impl Display for PlaylistError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Extracting URLs from playlist failed: {}", self.cause)
+    }
+}
+
+async fn ytdl_playlist(uri: &str) -> Result<Vec<Metadata>,  PlaylistError> {
+    let ytdl_args = [
+        "--print-json",
+        "--flat-playlist",
+        "--ignore-config",
+        "--no-warnings",
+        uri,
+    ];
+
+    let youtube_dl_res = TokioCommand::new("yt-dlp")
+        .args(&ytdl_args)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .await;
+
+    let youtube_dl_output = match youtube_dl_res {
+        Ok(output) => {
+            match from_utf8(&output.stdout) {
+                Ok(val) => val.to_owned(),
+                Err(e) => return Err(PlaylistError { cause: e.to_string() }),
+            }
+        },
+        Err(e) => return Err(PlaylistError {cause: e.to_string()}),
+    };
+
+    let mut metadata_vec = vec![];
+
+    for el in youtube_dl_output.split('\n') {
+        if el.is_empty() {
+            continue;
+        }
+        let meta = match serde_json::from_str(&el.replace('\n', "")) {
+            Ok(json) => {
+                Metadata::from_ytdl_output(json)
+            },
+            Err(e) => return Err(PlaylistError { cause: e.to_string() }),
+        };
+        metadata_vec.push(meta);
+    }
+    return Ok(metadata_vec);
 }

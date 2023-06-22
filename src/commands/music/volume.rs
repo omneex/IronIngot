@@ -81,7 +81,7 @@ pub async fn command(
             .edit_original_interaction_response(&ctx.http, |message| {
                 message.embed(|embed| {
                     embed.title("Volume Changed");
-                    embed.description("Set volume to ");
+                    embed.description(format!("Set volume to {}%.", volume_int));
                     embed
                 });
                 message
@@ -119,6 +119,7 @@ pub async fn register(ctx: &Context) {
             .name("volume")
             .description("Changes the volume.")
             .create_option(|option| {
+                option.description("0-100% Volume");
                 option.max_int_value(100);
                 option.min_int_value(0);
                 option.kind(serenity::model::prelude::command::CommandOptionType::Integer);
