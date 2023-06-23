@@ -1,22 +1,16 @@
 use serenity::async_trait;
+use serenity::model::application::command::Command as interaction_command;
+use serenity::model::prelude::command::CommandOptionType;
+use serenity::model::prelude::interaction::{application_command::*, InteractionResponseType};
 use serenity::model::prelude::GuildId;
-use songbird::id::GuildId as SongBirdGuildId;
-use songbird::tracks::Queued;
-use std::cell::Cell;
+use serenity::prelude::Context;
+use songbird::input::{ytdl_search, Metadata};
+use songbird::{create_player, ytdl, Event, EventContext, EventHandler, Songbird, TrackEvent};
 use std::fmt::Display;
 use std::process::Stdio;
 use std::str::from_utf8;
 use std::sync::{Arc, Mutex};
 use tokio::process::Command as TokioCommand;
-
-use serenity::model::application::command::Command as interaction_command;
-
-use serenity::model::prelude::command::CommandOptionType;
-use serenity::model::prelude::interaction::{application_command::*, InteractionResponseType};
-use serenity::prelude::Context;
-
-use songbird::input::{ytdl_search, Metadata};
-use songbird::{create_player, ytdl, Event, EventContext, EventHandler, TrackEvent, Songbird};
 use tracing::{error, info};
 use url::Url;
 
@@ -218,8 +212,8 @@ impl EventHandler for SongEndNotifier {
         let input = ytdl(video_id).await.unwrap();
         call.enqueue_source(input);
         call.queue().modify_queue(|queue| {
-            // Make sure that the first 
-            queue.swap(0, queue.len()-1)
+            // Make sure that the first
+            queue.swap(0, queue.len() - 1)
         });
         let _ = call.queue().resume();
         None
