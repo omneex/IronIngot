@@ -123,7 +123,8 @@ pub async fn register(ctx: &Context) {
                 option.max_int_value(100);
                 option.min_int_value(0);
                 option.kind(serenity::model::prelude::command::CommandOptionType::Integer);
-                option.name("volume")
+                option.name("volume");
+                option.required(true)
             })
     })
     .await

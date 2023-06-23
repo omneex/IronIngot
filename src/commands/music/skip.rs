@@ -5,6 +5,7 @@ use serenity::prelude::Context;
 use tracing::{error, info};
 
 use crate::commands::common::interaction_error::interaction_error_edit;
+use crate::commands::common::slash_commands::extract_vec;
 
 #[allow(unused)]
 pub async fn command(
@@ -17,6 +18,23 @@ pub async fn command(
         .unwrap()
         .to_guild_cached(&ctx.cache)
         .unwrap();
+
+    let mut bypass_playlist_opt: Option<bool> = None;
+    for tup in extract_vec(&interaction.data.options).await {
+        if tup.0 == "bypassplaylist" {
+            if let Some(x) = super::super::common::slash_commands::get_bool(tup.1) {
+                bypass_playlist_opt = Some(x);
+            } else {
+                interaction_error_edit("'bypassplaylist' param was invalid.", interaction, ctx).await;
+                return;
+            }
+        }
+    }
+
+    let bypass_playlist = match bypass_playlist_opt {
+        Some(x) => x,
+        None => false,
+    };
 
     let manager = songbird::get(ctx)
         .await
@@ -36,7 +54,7 @@ pub async fn command(
                             .interaction_response_data(|message| {
                                 message.flags(MessageFlags::EPHEMERAL);
                                 message.embed(|embed| {
-                                    embed.title("Now Playing");
+                                    embed.title("Skip");
                                     embed.description("There is nothing playing right now...");
                                     embed.footer(|footer| {
                                         footer.text("Queue position 0 is empty.");
@@ -52,7 +70,12 @@ pub async fn command(
                 return;
             }
             Some(track_handle) => track_handle,
-        };
+        };        
+        
+        // Clear the events
+        if bypass_playlist {
+            handler.remove_all_global_events();
+        }
 
         if let Err(track_error) = handler.queue().skip() {
             error!("{}", track_error.to_string());
@@ -99,6 +122,11 @@ pub async fn register(ctx: &Context) {
         command
             .name("skip")
             .description("Skips the current song playing")
+            .create_option(|option| {
+                option.name("bypassplaylist");
+                option.kind(serenity::model::prelude::command::CommandOptionType::Boolean);
+                option.description("If true, will skip all of the current playlist.")
+            })
     })
     .await
     {

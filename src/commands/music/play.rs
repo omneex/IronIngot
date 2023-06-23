@@ -1,9 +1,13 @@
-
-use std::error::Error;
+use serenity::async_trait;
+use serenity::model::prelude::GuildId;
+use songbird::id::GuildId as SongBirdGuildId;
+use songbird::tracks::Queued;
+use std::cell::Cell;
 use std::fmt::Display;
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 use std::str::from_utf8;
-use tokio::{process::Command as TokioCommand, task};
+use std::sync::{Arc, Mutex};
+use tokio::process::Command as TokioCommand;
 
 use serenity::model::application::command::Command as interaction_command;
 
@@ -11,8 +15,8 @@ use serenity::model::prelude::command::CommandOptionType;
 use serenity::model::prelude::interaction::{application_command::*, InteractionResponseType};
 use serenity::prelude::Context;
 
-use songbird::input::{ytdl_search, Input, Metadata};
-use songbird::{create_player, ytdl};
+use songbird::input::{ytdl_search, Metadata};
+use songbird::{create_player, ytdl, Event, EventContext, EventHandler, TrackEvent, Songbird};
 use tracing::{error, info};
 use url::Url;
 
@@ -59,12 +63,12 @@ pub async fn command(
 
     let query_type: QueryType = match Url::parse(&query_string) {
         Ok(url_obj) => {
-            if let Some(playlist_param) = url_obj.query_pairs().find(|pair| {pair.0=="list"}) {
+            if let Some(playlist_param) = url_obj.query_pairs().find(|pair| pair.0 == "list") {
                 QueryType::PLAYLIST
             } else {
                 QueryType::URL
             }
-        },
+        }
         Err(_) => QueryType::SEARCH,
     };
 
@@ -98,10 +102,18 @@ pub async fn command(
                 Err(e) => {
                     error!("{}", e);
                     interaction_error_edit("Failed to get the playlist.", interaction, ctx);
-                    return ;
-                },
+                    return;
+                }
             };
-            ytdl(query_string).await
+            playlist.reverse();
+            let meta = playlist.pop().unwrap();
+            let new_query: String;
+            let source_url: Url = match meta.source_url {
+                Some(url_str) => Url::parse(&url_str).unwrap(),
+                None => return,
+            };
+
+            ytdl(source_url.to_string()).await
         }
     };
 
@@ -115,11 +127,10 @@ pub async fn command(
     };
 
     let source_metadata = source.metadata.clone();
-    info!("{:?}", source_metadata);
 
     // Queue the track
     let mut call = call_lock.lock().await;
-    let (mut audio, audio_handle) = create_player(source);
+    let (mut track, track_handle) = create_player(source);
     let guild_id_str = interaction.guild_id.unwrap().0.to_string();
 
     // Try to get the guild from the database, returns an option if the guild was found.
@@ -128,9 +139,22 @@ pub async fn command(
         None => return,
     };
 
-    audio.set_volume(guild_doc.volume);
+    track.set_volume(guild_doc.volume);
 
-    call.enqueue(audio);
+    call.enqueue(track);
+    match query_type {
+        QueryType::PLAYLIST => {
+            call.add_global_event(
+                Event::Track(TrackEvent::End),
+                SongEndNotifier {
+                    playlist: Mutex::new(playlist),
+                    manager,
+                    guild_id: guild.id,
+                },
+            );
+        }
+        _ => (),
+    }
     let position: usize = call.queue().len();
 
     // Send the response
@@ -172,8 +196,38 @@ pub async fn register(ctx: &Context) {
     }
 }
 
+struct SongEndNotifier {
+    playlist: Mutex<Vec<Metadata>>,
+    manager: Arc<Songbird>,
+    guild_id: GuildId,
+}
+
+#[async_trait]
+impl EventHandler for SongEndNotifier {
+    async fn act(&self, _stx: &EventContext<'_>) -> Option<Event> {
+        let video_id = match self.playlist.lock().unwrap().pop() {
+            Some(meta) => match meta.source_url {
+                Some(url_str) => url_str,
+                None => return None,
+            },
+            None => return None,
+        };
+        let call_lock = self.manager.get(self.guild_id).unwrap();
+        let mut call = call_lock.lock().await;
+        let _ = call.queue().pause();
+        let input = ytdl(video_id).await.unwrap();
+        call.enqueue_source(input);
+        call.queue().modify_queue(|queue| {
+            // Make sure that the first 
+            queue.swap(0, queue.len()-1)
+        });
+        let _ = call.queue().resume();
+        None
+    }
+}
+
 struct PlaylistError {
-    cause: String
+    cause: String,
 }
 
 impl Display for PlaylistError {
@@ -182,7 +236,7 @@ impl Display for PlaylistError {
     }
 }
 
-async fn ytdl_playlist(uri: &str) -> Result<Vec<Metadata>,  PlaylistError> {
+async fn ytdl_playlist(uri: &str) -> Result<Vec<Metadata>, PlaylistError> {
     let ytdl_args = [
         "--print-json",
         "--flat-playlist",
@@ -200,13 +254,19 @@ async fn ytdl_playlist(uri: &str) -> Result<Vec<Metadata>,  PlaylistError> {
         .await;
 
     let youtube_dl_output = match youtube_dl_res {
-        Ok(output) => {
-            match from_utf8(&output.stdout) {
-                Ok(val) => val.to_owned(),
-                Err(e) => return Err(PlaylistError { cause: e.to_string() }),
+        Ok(output) => match from_utf8(&output.stdout) {
+            Ok(val) => val.to_owned(),
+            Err(e) => {
+                return Err(PlaylistError {
+                    cause: e.to_string(),
+                })
             }
         },
-        Err(e) => return Err(PlaylistError {cause: e.to_string()}),
+        Err(e) => {
+            return Err(PlaylistError {
+                cause: e.to_string(),
+            })
+        }
     };
 
     let mut metadata_vec = vec![];
@@ -216,10 +276,12 @@ async fn ytdl_playlist(uri: &str) -> Result<Vec<Metadata>,  PlaylistError> {
             continue;
         }
         let meta = match serde_json::from_str(&el.replace('\n', "")) {
-            Ok(json) => {
-                Metadata::from_ytdl_output(json)
-            },
-            Err(e) => return Err(PlaylistError { cause: e.to_string() }),
+            Ok(json) => Metadata::from_ytdl_output(json),
+            Err(e) => {
+                return Err(PlaylistError {
+                    cause: e.to_string(),
+                })
+            }
         };
         metadata_vec.push(meta);
     }

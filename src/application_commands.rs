@@ -68,7 +68,7 @@ pub async fn handle_interactions(
 }
 
 async fn handle_commands(
-    ctx: &&Context,
+    ctx: &Context,
     interaction: &ApplicationCommandInteraction,
     mongo_client: &mongodb::Client,
 ) {
