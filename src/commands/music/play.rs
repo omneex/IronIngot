@@ -18,9 +18,9 @@ use crate::commands::common::interaction_error::interaction_error_edit;
 use crate::commands::common::slash_commands::extract_vec;
 use crate::mongo_conn::get_guild_doc;
 enum QueryType {
-    URL,
-    PLAYLIST,
-    SEARCH,
+    Url,
+    Playlist,
+    Search,
 }
 
 #[allow(unused)]
@@ -58,12 +58,12 @@ pub async fn command(
     let query_type: QueryType = match Url::parse(&query_string) {
         Ok(url_obj) => {
             if let Some(playlist_param) = url_obj.query_pairs().find(|pair| pair.0 == "list") {
-                QueryType::PLAYLIST
+                QueryType::Playlist
             } else {
-                QueryType::URL
+                QueryType::Url
             }
         }
-        Err(_) => QueryType::SEARCH,
+        Err(_) => QueryType::Search,
     };
 
     // Get the call
@@ -88,9 +88,9 @@ pub async fn command(
     let mut playlist: Vec<Metadata> = vec![];
     // Get the track
     let input_res = match query_type {
-        QueryType::URL => ytdl(query_string).await,
-        QueryType::SEARCH => ytdl_search(query_string).await,
-        QueryType::PLAYLIST => {
+        QueryType::Url => ytdl(query_string).await,
+        QueryType::Search => ytdl_search(query_string).await,
+        QueryType::Playlist => {
             playlist = match ytdl_playlist(&query_string).await {
                 Ok(playlist) => playlist,
                 Err(e) => {
@@ -136,18 +136,15 @@ pub async fn command(
     track.set_volume(guild_doc.volume);
 
     call.enqueue(track);
-    match query_type {
-        QueryType::PLAYLIST => {
-            call.add_global_event(
-                Event::Track(TrackEvent::End),
-                SongEndNotifier {
-                    playlist: Mutex::new(playlist),
-                    manager,
-                    guild_id: guild.id,
-                },
-            );
-        }
-        _ => (),
+    if let QueryType::Playlist = query_type {
+        call.add_global_event(
+            Event::Track(TrackEvent::End),
+            SongEndNotifier {
+                playlist: Mutex::new(playlist),
+                manager,
+                guild_id: guild.id,
+            },
+        );
     }
     let position: usize = call.queue().len();
 
@@ -240,7 +237,7 @@ async fn ytdl_playlist(uri: &str) -> Result<Vec<Metadata>, PlaylistError> {
     ];
 
     let youtube_dl_res = TokioCommand::new("yt-dlp")
-        .args(&ytdl_args)
+        .args(ytdl_args)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -279,5 +276,5 @@ async fn ytdl_playlist(uri: &str) -> Result<Vec<Metadata>, PlaylistError> {
         };
         metadata_vec.push(meta);
     }
-    return Ok(metadata_vec);
+    Ok(metadata_vec)
 }

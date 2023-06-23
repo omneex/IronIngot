@@ -31,10 +31,7 @@ pub async fn command(
         }
     }
 
-    let bypass_playlist = match bypass_playlist_opt {
-        Some(x) => x,
-        None => false,
-    };
+    let bypass_playlist = bypass_playlist_opt.unwrap_or(false);
 
     let manager = songbird::get(ctx)
         .await

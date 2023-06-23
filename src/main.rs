@@ -105,7 +105,7 @@ impl EventHandler for Handler {
         let db = get_db(&client, "botdb").await;
         let col: Collection<GuildStruct> = get_collection(&db, "guilds", None).await;
 
-        let guild_id_str = guild.id.0.to_string().clone();
+        let guild_id_str = guild.id.0.to_string();
 
         let _ = col
             .insert_one(

@@ -58,7 +58,7 @@ pub async fn handle_interactions(
     match intn {
         Interaction::Ping(_) => {}
         Interaction::ApplicationCommand(a_command) => {
-            handle_commands(&ctx, &a_command, mongo_client).await;
+            handle_commands(ctx, &a_command, mongo_client).await;
         }
         Interaction::MessageComponent(m_component) => {
             handle_components(&ctx, &m_component, mongo_client).await;
