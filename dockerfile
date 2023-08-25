@@ -4,7 +4,7 @@ FROM ubuntu AS base
 RUN apt update
 RUN apt install -y libopus-dev curl python3 python3-pip cmake youtube-dl
 RUN pip3 install -U pip setuptools wheel
-RUN pip3 install -U --force-reinstall https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/download/2023.06.19.132544/yt-dlp.tar.gz
+RUN pip3 install -U --force-reinstall https://github.com/yt-dlp/yt-dlp/releases/download/2023.07.06/yt-dlp.tar.gz
 
 # Install Rust
 RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
