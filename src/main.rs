@@ -120,6 +120,17 @@ impl EventHandler for Handler {
             )
             .await;
     }
+    
+    async fn voice_state_update(&self, ctx: Context, _old: VoiceState, new: VoiceState) {
+        if (new.channel_id?.to_channel(&ctx).await?.guild()?.member_count <= 0) {
+            let manager = songbird::get(&ctx)
+            .await
+            .expect("Songbird Voice client placed in at initialisation.")
+            .clone();
+            
+            manager.leave(guild_id);
+        }
+    }
 }
 
 #[tokio::main]
