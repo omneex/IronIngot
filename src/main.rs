@@ -121,14 +121,48 @@ impl EventHandler for Handler {
             .await;
     }
 
-    async fn voice_state_update(&self, ctx: Context, _old: VoiceState, new: VoiceState) {
-        if (new.channel_id?.to_channel(&ctx).await?.guild()?.member_count <= 0) {
+    async fn voice_state_update(&self, ctx: Context, _old: std::option::Option<serenity::model::prelude::VoiceState>, new_state: VoiceState) {
+
+        let guild_channel: GuildChannel = match new_state.channel_id {
+            Some(id) => {
+                match id.to_channel(&ctx).await {
+                    Ok(channel) => {
+                        match channel.guild() {
+                            Some(guild_channel) => guild_channel,
+                            None => {
+                                warn!("No guild for channel with new voice state");
+                                return
+                            },
+                        } 
+                    },
+                    Err(_) => {
+                        error!("Failed to get guild_channel from channel");
+                        return
+                    },
+                }
+            },
+            None => {
+                warn!("No channel id with new voice state");
+                return
+            },
+        };
+
+        let member_count = match guild_channel.members(&ctx).await {
+            Ok(memebers) => memebers.len(),
+            Err(_) => {
+                error!("Failed to get memebers from guild_channel");
+                return
+            },
+        };
+
+        
+        if member_count <= 0 {
             let manager = songbird::get(&ctx)
             .await
             .expect("Songbird Voice client placed in at initialisation.")
             .clone();
             
-            manager.leave(guild_id);
+            let _ = manager.leave(guild_channel.guild_id).await;
         }
     }
 }
