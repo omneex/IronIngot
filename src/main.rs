@@ -123,15 +123,22 @@ impl EventHandler for Handler {
 
     async fn voice_state_update(&self, ctx: Context, old_state_opt: Option<VoiceState>, new_state: VoiceState) {
 
+        debug!("{:?}", new_state);
 
         let old_state = match old_state_opt {
-            Some(state) => state,
-            None => return, // They are joining, don't care
+            Some(state) => {
+                info!("{:?}", state);
+                info!("-->>");
+                info!("{:?}", new_state);
+                state
+            },
+            None => {
+                info!("{:?}", new_state);
+                return
+            }, // They are joining, don't care
         };
         
-        debug!("{:?}", old_state);
-        debug!("-->>");
-        debug!("{:?}", new_state);
+        
         
         if new_state.channel_id.is_some() {
             return
