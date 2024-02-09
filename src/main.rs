@@ -16,7 +16,7 @@ use serenity::{
     async_trait, framework::StandardFramework, model::prelude::GuildId, model::prelude::*,
     prelude::*,
 };
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 
 use crate::startup::insert_guilds;
 
@@ -121,9 +121,23 @@ impl EventHandler for Handler {
             .await;
     }
 
-    async fn voice_state_update(&self, ctx: Context, _old: std::option::Option<serenity::model::prelude::VoiceState>, new_state: VoiceState) {
+    async fn voice_state_update(&self, ctx: Context, old_state_opt: Option<VoiceState>, new_state: VoiceState) {
 
-        let guild_channel: GuildChannel = match new_state.channel_id {
+
+        let old_state = match old_state_opt {
+            Some(state) => state,
+            None => return, // They are joining, don't care
+        };
+        
+        debug!("{:?}", old_state);
+        debug!("-->>");
+        debug!("{:?}", new_state);
+        
+        if new_state.channel_id.is_some() {
+            return
+        }
+
+        let guild_channel: GuildChannel = match old_state.channel_id {
             Some(id) => {
                 match id.to_channel(&ctx).await {
                     Ok(channel) => {
