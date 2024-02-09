@@ -177,7 +177,7 @@ impl EventHandler for Handler {
         };
 
         
-        if member_count <= 0 {
+        if member_count <= 1 {
             let manager = songbird::get(&ctx)
             .await
             .expect("Songbird Voice client placed in at initialisation.")
